@@ -1,12 +1,9 @@
 /*
  * This file is part of the MicroPython project, http://micropython.org/
  *
- * Development of the code in this file was sponsored by Microbric Pty Ltd
- *
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Damien P. George
- * Copyright (c) 2017 Pycom Limited
+ * Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,43 +24,27 @@
  * THE SOFTWARE.
  */
 
-#include <stdio.h>
-
-#include "py/mpconfig.h"
-#include "py/mpstate.h"
 #include "py/gc.h"
 #include "py/mpthread.h"
+#include "shared/runtime/gchelper.h"
+#include "shared/runtime/softtimer.h"
 #include "gccollect.h"
 
-
-// The level argument must be volatile to force the compiler to emit code that
-// will call this function recursively, to nest the C stack.
-static void gc_collect_inner(volatile unsigned int level) {
-    if (level < XCHAL_NUM_AREGS / 8) {
-        // Go deeper on the stack to spill more registers from the register window.
-        gc_collect_inner(level + 1);
-    } else {
-        // Deep enough so that all registers are on the C stack, now trace the stack.
-        volatile uint32_t sp = (uint32_t)esp_cpu_get_sp();
-        gc_collect_root((void **)sp, ((mp_uint_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
-    }
-}
-
 void gc_collect(void) {
+    // start the GC
     gc_collect_start();
-    gc_collect_inner(0);
+
+    // trace the stack and registers
+    gc_helper_collect_regs_and_stack();
+
+    // trace root pointers from any threads
     #if MICROPY_PY_THREAD
     mp_thread_gc_others();
     #endif
+
+    // trace soft timer nodes
+    // soft_timer_gc_mark_all();
+
+    // end the GC
     gc_collect_end();
 }
-
-#if MICROPY_GC_SPLIT_HEAP_AUTO
-
-// The largest new region that is available to become Python heap is the largest
-// free block in the ESP-IDF system heap.
-size_t gc_get_max_new_split(void) {
-    return heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
-}
-
-#endif

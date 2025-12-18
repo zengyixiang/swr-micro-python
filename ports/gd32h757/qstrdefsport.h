@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Damien P. George
+ * Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,33 @@
  * THE SOFTWARE.
  */
 
-#include <stdint.h>
-#include <string.h>
+// qstrs specific to this port
+// *FORMAT-OFF*
 
-#include "export_main.h"
+// Entries for sys.path
+Q(/flash)
+Q(/flash/lib)
+Q(/sd)
+Q(/sd/lib)
 
-// Send string of given length to stdout, converting \n to \r\n.
-void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
-    while (len--) {
-        if (*str == '\n') {
-            uart5_write_char('\r');
-        }
-        uart5_write_char(*str++);
-    }
-}
+// For os.sep
+Q(/)
+
+#if MICROPY_HW_ENABLE_USB
+// for usb modes
+Q(VCP)
+Q(MSC)
+Q(VCP+MSC)
+Q(VCP+HID)
+Q(VCP+MSC+HID)
+#if MICROPY_HW_USB_CDC_NUM >= 2
+Q(2xVCP)
+Q(2xVCP+MSC)
+Q(2xVCP+MSC+HID)
+#endif
+#if MICROPY_HW_USB_CDC_NUM >= 3
+Q(3xVCP)
+Q(3xVCP+MSC)
+Q(3xVCP+MSC+HID)
+#endif
+#endif

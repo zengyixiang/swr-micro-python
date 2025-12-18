@@ -28,40 +28,35 @@
 #include "py/compile.h"
 #include "py/runtime.h"
 #include <stdio.h>
+#include "py/mperrno.h"
+#include "py/builtin.h"
+#include "gccollect.h"
+#include "py/gc.h"
+#include "shared/runtime/pyexec.h"
+#include "shared/readline/readline.h"
 
-static const char *demo_single_input =
-    "print('hello world!', list(x + 1 for x in range(10)), end='eol\\n')";
-
-static const char *demo_file_input =
-    "import micropython\n"
-    "\n"
-    "print(dir(micropython))\n"
-    "\n"
-    "for i in range(10):\n"
-    "    print('iter {:08}'.format(i))";
-
-static void do_str(const char *src, mp_parse_input_kind_t input_kind) {
-    nlr_buf_t nlr;
-    if (nlr_push(&nlr) == 0) {
-        // Compile, parse and execute the given string.
-        mp_lexer_t *lex = mp_lexer_new_from_str_len(MP_QSTR__lt_stdin_gt_, src, strlen(src), 0);
-        qstr source_name = lex->source_name;
-        mp_parse_tree_t parse_tree = mp_parse(lex, input_kind);
-        mp_obj_t module_fun = mp_compile(&parse_tree, source_name, true);
-        mp_call_function_0(module_fun);
-        nlr_pop();
-    } else {
-        // Uncaught exception: print it out.
-        mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
-    }
-}
 
 // Main entry point: initialise the runtime and execute demo strings.
 int mp_main(int argc, char *argv[]) {
     printf("mp_main run argc=%d arg.1=%s\r\n", argc,argv[0]);
+    printf("_estack=0x%lx stack_end=0x%lx stack_size=%ld\r\n", (uint32_t)&_estack, (uint32_t)&Heap_end,(uint32_t)((uint32_t)&_estack - (uint32_t)&Heap_end));
+    printf("end=0x%lx _end=0x%lx Heap_end=0x%lx _estack=0x%lx\r\n", (uint32_t)&end, (uint32_t)&_end,(uint32_t)&Heap_end, (uint32_t)&_estack);
+    // Stack limit init.
+    mp_cstack_init_with_top(&_estack, (char *)&_estack - (char *)&Heap_end);
+
+    static uint8_t heap[1024 * 128];
+    // GC init
+    gc_init(heap, &heap[1024 * 128]);
+
     mp_init();
-    do_str(demo_single_input, MP_PARSE_SINGLE_INPUT);
-    do_str(demo_file_input, MP_PARSE_FILE_INPUT);
+
+    readline_init0();
+    printf("pyexec_friendly_repl\r\n");
+    for (;;) {
+        if (pyexec_friendly_repl() != 0) {
+            break;
+        }
+    }
     mp_deinit();
     return 0;
 }
@@ -72,6 +67,28 @@ void nlr_jump_fail(void *val) {
     }
 }
 
+// mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
+//     mp_raise_OSError(MP_ENOENT);
+// }
+// mp_import_stat_t mp_import_stat(const char *path) {
+//     return MP_IMPORT_STAT_NO_EXIST;
+// }
+
+mp_uint_t mp_hal_ticks_ms(void) {
+    return 0;
+}
+mp_uint_t mp_hal_ticks_us(void) {
+    return 0;
+}
+mp_uint_t mp_hal_ticks_cpu(void) {
+    return 0;
+}
+void mp_hal_delay_ms(mp_uint_t Delay){
+
+}
+void mp_hal_delay_us(mp_uint_t Delay){
+    
+}
 #ifndef NDEBUG
 // Used when debugging is enabled.
 void MP_WEAK __assert_func(const char *file, int line, const char *func, const char *expr) {

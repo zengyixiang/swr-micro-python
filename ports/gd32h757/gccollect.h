@@ -1,11 +1,9 @@
 /*
  * This file is part of the MicroPython project, http://micropython.org/
  *
- * Development of the code in this file was sponsored by Microbric Pty Ltd
- *
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Damien P. George
+ * Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,18 +23,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_STM32_GCCOLLECT_H
+#define MICROPY_INCLUDED_STM32_GCCOLLECT_H
 
-extern uint32_t _text_start;
-extern uint32_t _text_end;
-extern uint32_t _irom0_text_start;
-extern uint32_t _irom0_text_end;
-extern uint32_t _data_start;
-extern uint32_t _data_end;
-extern uint32_t _rodata_start;
-extern uint32_t _rodata_end;
-extern uint32_t _bss_start;
-extern uint32_t _bss_end;
+// variables defining memory layout
+// (these probably belong somewhere else...)
+extern uint32_t _etext;
+extern uint32_t _sidata;
+extern uint32_t _ram_start;
+extern uint32_t _sdata;
+extern uint32_t _edata;
+extern uint32_t _sbss;
+extern uint32_t _ebss;
 extern uint32_t _heap_start;
 extern uint32_t _heap_end;
-
-void gc_collect(void);
+extern uint32_t _sstack;
+extern uint32_t _estack;
+extern uint32_t _ram_end;
+extern uint32_t Heap_end;
+extern uint32_t end;
+extern uint32_t _end;
+#endif // MICROPY_INCLUDED_STM32_GCCOLLECT_H

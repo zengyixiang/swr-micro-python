@@ -29,18 +29,37 @@
 // Options to control how MicroPython is built
 
 // Use the minimal starting configuration (disables all optional features).
-#define MICROPY_CONFIG_ROM_LEVEL                (MICROPY_CONFIG_ROM_LEVEL_MINIMUM)
+#define MICROPY_CONFIG_ROM_LEVEL                (MICROPY_CONFIG_ROM_LEVEL_EVERYTHING)
+
+#define MICROPY_HW_BOARD_NAME       "swr gd32H7"
+#define MICROPY_HW_MCU_NAME         "GD32H757"
+// #define MICROPY_HW_FLASH_FS_LABEL   "Portenta H7"
 
 // Compiler configuration
 #define MICROPY_ENABLE_COMPILER                 (1)
 
 // Python internal features
-#define MICROPY_ERROR_REPORTING                 (MICROPY_ERROR_REPORTING_NONE)
+#define MICROPY_ERROR_REPORTING                 (MICROPY_ERROR_REPORTING_DETAILED)
 
 // Fine control over Python builtins, classes, modules, etc.
-#define MICROPY_PY_SYS                          (0)
+#define MICROPY_PY_SYS                          (1)
+#define MICROPY_ENABLE_GC           (1)
+#define MICROPY_KBD_EXCEPTION       (1)
+#define MICROPY_VFS                 (1)
+#define MICROPY_READER_VFS          (1)
 
-// Type definitions for the specific machine
+#define MICROPY_STACK_CHECK         (1)
+#define MICROPY_STACK_CHECK_MARGIN  (1024)
+// emitters
+#define MICROPY_PERSISTENT_CODE_LOAD (1)
+#ifndef MICROPY_EMIT_THUMB
+#define MICROPY_EMIT_THUMB          (1)
+#endif
+#ifndef MICROPY_EMIT_INLINE_THUMB
+#define MICROPY_EMIT_INLINE_THUMB   (1)
+#endif
+
+#define MP_STATE_PORT MP_STATE_VM
 
 typedef long mp_off_t;
 
