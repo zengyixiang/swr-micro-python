@@ -34,15 +34,16 @@
 #include "py/gc.h"
 #include "shared/runtime/pyexec.h"
 #include "shared/readline/readline.h"
-
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
 
 // Main entry point: initialise the runtime and execute demo strings.
 int mp_main(int argc, char *argv[]) {
-    printf("mp_main run argc=%d arg.1=%s\r\n", argc,argv[0]);
-    printf("_estack=0x%lx stack_end=0x%lx stack_size=%ld\r\n", (uint32_t)&_estack, (uint32_t)&Heap_end,(uint32_t)((uint32_t)&_estack - (uint32_t)&Heap_end));
-    printf("end=0x%lx _end=0x%lx Heap_end=0x%lx _estack=0x%lx\r\n", (uint32_t)&end, (uint32_t)&_end,(uint32_t)&Heap_end, (uint32_t)&_estack);
-    // Stack limit init.
-    mp_cstack_init_with_top(&_estack, (char *)&_estack - (char *)&Heap_end);
+    TaskStatus_t taskDetails;
+    vTaskGetInfo(NULL, &taskDetails, pdTRUE, eInvalid);
+    printf("pxStackBase=%lx pxTopOfStack=%lx stack_size=%ld\r\n", (uint32_t)taskDetails.pxStackBase, (uint32_t)taskDetails.pxTopOfStack, (uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase);
+    mp_cstack_init_with_top((void*)taskDetails.pxTopOfStack, (uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase);
 
     static uint8_t heap[1024 * 128];
     // GC init
@@ -51,7 +52,7 @@ int mp_main(int argc, char *argv[]) {
     mp_init();
 
     readline_init0();
-    printf("pyexec_friendly_repl\r\n");
+
     for (;;) {
         if (pyexec_friendly_repl() != 0) {
             break;

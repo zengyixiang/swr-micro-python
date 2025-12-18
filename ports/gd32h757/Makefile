@@ -15,7 +15,7 @@ DFU ?= $(TOP)/tools/dfu.py
 PYDFU ?= $(TOP)/tools/pydfu.py
 
 # Set CFLAGS.
-CFLAGS += -I. -I$(TOP) -I$(BUILD) -I$(TOP)/../Include
+CFLAGS += -I. -I$(TOP) -I$(BUILD) -I$(TOP)/../Include -I$(TOP)/../RTOS/FreeRTOS/Source/include -I$(TOP)/../RTOS/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1 -I$(TOP)/../main/inc
 CFLAGS += -Wall -Werror -std=c11 # -nostdlib
 CFLAGS +=  -mtune=cortex-m7 -mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb
 CSUPEROPT = -Os # save some code space for performance-critical code
