@@ -32,7 +32,7 @@ endif
 LDFLAGS += -nostdlib -T stm32f405.ld --gc-sections
 
 # Define the required source files.
-SRC_C += lib.c main.c gccollect.c mphalport.c
+SRC_C += lib.c main.c gccollect.c mphalport.c mpthreadport.c
 
 SHARED_SRC_C += $(addprefix shared/,\
 	netutils/dhcpserver.c \

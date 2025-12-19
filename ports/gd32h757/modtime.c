@@ -1,9 +1,11 @@
 /*
  * This file is part of the MicroPython project, http://micropython.org/
  *
+ * Development of the code in this file was sponsored by Microbric Pty Ltd
+ *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * Copyright (c) 2016-2023 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,33 +26,21 @@
  * THE SOFTWARE.
  */
 
-// qstrs specific to this port
-// *FORMAT-OFF*
+#include <sys/time.h>
 
-// Entries for sys.path
-Q(/flash)
-Q(/flash/lib)
-Q(/sd)
-Q(/sd/lib)
+#include "py/obj.h"
+#include "shared/timeutils/timeutils.h"
 
-// For os.sep
-Q(/)
-Q(/System/SysLib)
-#if MICROPY_HW_ENABLE_USB
-// for usb modes
-Q(VCP)
-Q(MSC)
-Q(VCP+MSC)
-Q(VCP+HID)
-Q(VCP+MSC+HID)
-#if MICROPY_HW_USB_CDC_NUM >= 2
-Q(2xVCP)
-Q(2xVCP+MSC)
-Q(2xVCP+MSC+HID)
-#endif
-#if MICROPY_HW_USB_CDC_NUM >= 3
-Q(3xVCP)
-Q(3xVCP+MSC)
-Q(3xVCP+MSC+HID)
-#endif
-#endif
+// Get the localtime.
+static void mp_time_localtime_get(timeutils_struct_time_t *tm) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    timeutils_seconds_since_epoch_to_struct_time(tv.tv_sec, tm);
+}
+
+// Return the number of seconds since the Epoch.
+static mp_obj_t mp_time_time_get(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return timeutils_obj_from_timestamp(tv.tv_sec);
+}

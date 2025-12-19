@@ -6,7 +6,7 @@
 #include "py/mphal.h"
 #include "extmod/misc.h"
 #include "export_main.h"
-
+#include <sys/time.h>
 MP_WEAK uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
 
     return 0;
@@ -48,3 +48,10 @@ MP_WEAK mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
     return did_write ? ret : 0;
 }
 
+uint64_t mp_hal_time_ns(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t ns = tv.tv_sec * 1000000000ULL;
+    ns += (uint64_t)tv.tv_usec * 1000ULL;
+    return ns;
+}

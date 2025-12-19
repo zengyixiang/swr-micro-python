@@ -42,7 +42,10 @@
 int mp_main(int argc, char *argv[]) {
     TaskStatus_t taskDetails;
     vTaskGetInfo(NULL, &taskDetails, pdTRUE, eInvalid);
-    printf("pxStackBase=%lx pxTopOfStack=%lx stack_size=%ld\r\n", (uint32_t)taskDetails.pxStackBase, (uint32_t)taskDetails.pxTopOfStack, (uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase);
+    printf("pxStackBase=%lx pxTopOfStack=%lx stack_size=%ld stack_size_4=%ld uxBasePriority=%ld\r\n", (uint32_t)taskDetails.pxStackBase, (uint32_t)taskDetails.pxTopOfStack, (uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase, ((uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase) / sizeof(uintptr_t), taskDetails.uxBasePriority);
+    
+    mp_thread_init(taskDetails.pxStackBase,((uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase) / sizeof(uintptr_t), taskDetails.uxBasePriority);
+
     mp_cstack_init_with_top((void*)taskDetails.pxTopOfStack, (uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase);
 
     static uint8_t heap[1024 * 128];
@@ -50,7 +53,7 @@ int mp_main(int argc, char *argv[]) {
     gc_init(heap, &heap[1024 * 128]);
 
     mp_init();
-
+    mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_System_slash_SysLib));
     readline_init0();
 
     for (;;) {
