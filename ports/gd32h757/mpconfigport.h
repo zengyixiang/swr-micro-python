@@ -6,6 +6,7 @@
 
 #define MICROPY_HW_BOARD_NAME       "swr gd32H7"
 #define MICROPY_HW_MCU_NAME         "GD32H757"
+#define MICROPY_PY_SYS_PLATFORM "GD32H757"
 // #define MICROPY_HW_FLASH_FS_LABEL   "Portenta H7"
 
 // Compiler configuration
@@ -20,6 +21,7 @@
 #define MICROPY_KBD_EXCEPTION       (1)
 #define MICROPY_VFS                 (1)
 #define MICROPY_READER_VFS          (1)
+#define MICROPY_VFS_FAT             (0)
 #define MICROPY_ALLOC_PATH_MAX              (128)
 #define MICROPY_STACK_CHECK         (1)
 #define MICROPY_STACK_CHECK_MARGIN  (1024)
@@ -51,7 +53,23 @@ typedef long mp_off_t;
 
 
 #define MICROPY_PY_RANDOM_SEED_INIT_FUNC    (get_random_data())
+#define MICROPY_PY_OS_INCLUDEFILE           "ports/gd32h757/modos.c"
+#define MICROPY_PY_OS_DUPTERM               (1)
+#define MICROPY_PY_OS_DUPTERM_NOTIFY        (1)
+#define MICROPY_PY_OS_SYNC                  (1)
+#define MICROPY_PY_OS_UNAME                 (1)
+#define MICROPY_PY_OS_URANDOM               (1)
 
 
+#if MICROPY_PY_THREAD
+#define MICROPY_EVENT_POLL_HOOK \
+    do { \
+        extern void mp_handle_pending(bool); \
+        mp_handle_pending(true); \
+        MP_THREAD_GIL_EXIT(); \
+        ulTaskNotifyTake(pdFALSE, 1); \
+        MP_THREAD_GIL_ENTER(); \
+    } while (0);
+#endif
 // Need to provide a declaration/definition of alloca()
 #include <alloca.h>

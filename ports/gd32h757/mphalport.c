@@ -7,6 +7,13 @@
 #include "extmod/misc.h"
 #include "export_main.h"
 #include <sys/time.h>
+#include "py/ringbuf.h"
+
+static uint8_t stdin_ringbuf_array[260];
+ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0, 0};
+
+
+
 MP_WEAK uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
 
     return 0;
