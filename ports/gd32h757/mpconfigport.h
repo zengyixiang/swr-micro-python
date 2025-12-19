@@ -15,6 +15,8 @@
 // Python internal features
 #define MICROPY_ERROR_REPORTING                 (MICROPY_ERROR_REPORTING_DETAILED)
 
+#define	DISK_NAME		"0:"
+// #define SYS_SENSORS_NUM                     19
 // Fine control over Python builtins, classes, modules, etc.
 #define MICROPY_PY_SYS                          (1)
 #define MICROPY_ENABLE_GC           (1)

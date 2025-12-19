@@ -20,7 +20,7 @@ MP_WEAK uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
 }
 MP_WEAK int mp_hal_stdin_rx_chr(void) {
     for (;;) {
-        return uart5_recv_char();
+        return (int)uart_rxc();
         // if (MP_STATE_PORT(pyb_stdio_uart) != NULL && uart_rx_any(MP_STATE_PORT(pyb_stdio_uart))) {
         //     return uart_rx_char(MP_STATE_PORT(pyb_stdio_uart));
         // }
@@ -38,7 +38,7 @@ MP_WEAK mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
     bool did_write = false;
 #if 1
     for(int i = 0;i < len; i++){
-        uart5_write_char(str[i]);
+        uart_txc(str[i]);
     }
     did_write = true;
 #else
