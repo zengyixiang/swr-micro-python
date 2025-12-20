@@ -16,14 +16,10 @@
 
 
 
-#ifdef  GD32H7XX
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
-
-#else
-
-#endif
+#include "sys.h"
 
 
 static mp_obj_t delay_ms(mp_obj_t time_ms) {

@@ -53,7 +53,7 @@
 #define MICROPY_PY_THREAD_GIL_VM_DIVISOR    (32)
 typedef long mp_off_t;
 
-
+extern uint32_t get_random_data();
 #define MICROPY_PY_RANDOM_SEED_INIT_FUNC    (get_random_data())
 #define MICROPY_PY_OS_INCLUDEFILE           "ports/gd32h757/modos.c"
 #define MICROPY_PY_OS_DUPTERM               (1)

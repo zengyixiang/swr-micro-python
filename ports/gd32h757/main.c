@@ -37,6 +37,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
+#include "sys_sensors.h"
+#include "sys_timer.h"
+#include "sys_ui.h"
+#include "my_sdram.h"
 
 // Main entry point: initialise the runtime and execute demo strings.
 int mp_main(int argc, char *argv[]) {
@@ -48,11 +52,12 @@ int mp_main(int argc, char *argv[]) {
 
     mp_cstack_init_with_top((void*)taskDetails.pxTopOfStack, (uint32_t)taskDetails.pxTopOfStack - (uint32_t)taskDetails.pxStackBase);
 
-    static uint8_t heap[1024 * 128];
-    // GC init
-    gc_init(heap, &heap[1024 * 128]);
+    gc_init((void*)SDRAM_DEVICE0_ADDR, (void*)(SDRAM_DEVICE0_ADDR + 1024 * 1024));
 
     mp_init();
+    timer_init0();
+    sys_sensors_init();
+    sys_ui_init0();
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_System_slash_SysLib));
     readline_init0();
 

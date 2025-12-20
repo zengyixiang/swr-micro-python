@@ -6,21 +6,13 @@
 // #include "sensors/sensors.h"
 // #include "sensors/sensors_protocol.h"
 
-#ifdef  GD32H7XX
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
 #include "py/objmodule.h"
 #include "sys.h"
-#else
-
-static uint16_t get_external_sensor_channel_num(Sensors_name_TypeDef sensor_name)
-{
-    return 2;
-}
-
-#endif
-
+#include "sensors/sensors.h"
 
 #define PYB_SENSORS_OBJ_ALL_NUM MP_ARRAY_SIZE(MP_STATE_PORT(pyb_sensors_obj_all))
 

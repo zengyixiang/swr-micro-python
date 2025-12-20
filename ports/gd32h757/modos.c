@@ -2,6 +2,7 @@
 #include "py/mphal.h"
 #include "extmod/misc.h"
 #include "export_main.h"
+#include "random.h"
 
 static mp_obj_t mp_os_urandom(mp_obj_t num) {
     mp_int_t n = mp_obj_get_int(num);

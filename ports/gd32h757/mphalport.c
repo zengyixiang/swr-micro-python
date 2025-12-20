@@ -8,7 +8,11 @@
 #include "export_main.h"
 #include <sys/time.h>
 #include "py/ringbuf.h"
-
+#include "debug.h"
+extern int uart_txc(char ch);
+extern char uart_rxc(void);
+extern void uart_xSemaphore_take(void);
+extern void uart_xSemaphore_give(void);
 static uint8_t stdin_ringbuf_array[260];
 ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0, 0};
 
@@ -37,9 +41,11 @@ MP_WEAK mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
     mp_uint_t ret = len;
     bool did_write = false;
 #if 1
+    uart_xSemaphore_take();
     for(int i = 0;i < len; i++){
         uart_txc(str[i]);
     }
+    uart_xSemaphore_give();
     did_write = true;
 #else
     if (MP_STATE_PORT(pyb_stdio_uart) != NULL) {
