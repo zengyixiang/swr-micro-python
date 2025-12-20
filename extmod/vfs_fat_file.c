@@ -32,7 +32,6 @@
 #include "py/runtime.h"
 #include "py/stream.h"
 #include "py/mperrno.h"
-#include "lib/oofatfs/ff.h"
 #include "extmod/vfs_fat.h"
 
 // this table converts from FRESULT to POSIX errno
@@ -197,7 +196,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
 // Factory function for I/O stream classes
 static mp_obj_t fat_vfs_open(mp_obj_t self_in, mp_obj_t path_in, mp_obj_t mode_in) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(self_in);
-
+    (void)self;
     const mp_obj_type_t *type = &mp_type_vfs_fat_textio;
     int mode = 0;
     const char *mode_s = mp_obj_str_get_str(mode_in);
@@ -231,7 +230,7 @@ static mp_obj_t fat_vfs_open(mp_obj_t self_in, mp_obj_t path_in, mp_obj_t mode_i
     pyb_file_obj_t *o = mp_obj_malloc_with_finaliser(pyb_file_obj_t, type);
 
     const char *fname = mp_obj_str_get_str(path_in);
-    FRESULT res = f_open(&self->fatfs, &o->fp, fname, mode);
+    FRESULT res = f_open(&o->fp, fname, mode);
     if (res != FR_OK) {
         m_del_obj(pyb_file_obj_t, o);
         mp_raise_OSError(fresult_to_errno_table[res]);

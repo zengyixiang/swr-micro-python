@@ -41,6 +41,8 @@
 #include "sys_timer.h"
 #include "sys_ui.h"
 #include "my_sdram.h"
+#include "mp_main.h"
+#include "app/sys.h"
 
 // Main entry point: initialise the runtime and execute demo strings.
 int mp_main(int argc, char *argv[]) {
@@ -59,11 +61,36 @@ int mp_main(int argc, char *argv[]) {
     sys_sensors_init();
     sys_ui_init0();
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_System_slash_SysLib));
+    init_sdcard_fs();
     readline_init0();
 
-    for (;;) {
-        if (pyexec_friendly_repl() != 0) {
-            break;
+    while(1)
+    {
+        if(get_py_state() == PY_STATE_RUN_FILE)
+        {
+            pyexec_file_if_exists(PY_FILE_NAME);
+            mp_thread_deinit();
+            py_sys_exit();
+			free_py_mem();
+            vTaskDelay(10);
+            gc_collect();
+            change_py_state(PY_STATE_IDLE);
+        }
+        else if(get_py_state() == PY_STATE_REPL)
+        {
+            pyexec_friendly_repl();
+            mp_thread_deinit();
+            py_sys_exit();
+			free_py_mem();
+            vTaskDelay(10);
+            gc_collect();
+            change_py_state(PY_STATE_IDLE);  
+        }
+        else
+        {
+			fwdgt_counter_reload();
+            change_py_state(PY_STATE_IDLE);
+            vTaskDelay(100);
         }
     }
     mp_deinit();

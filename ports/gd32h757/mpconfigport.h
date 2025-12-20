@@ -23,7 +23,7 @@
 #define MICROPY_KBD_EXCEPTION       (1)
 #define MICROPY_VFS                 (1)
 #define MICROPY_READER_VFS          (1)
-#define MICROPY_VFS_FAT             (0)
+#define MICROPY_VFS_FAT             (1)
 #define MICROPY_ALLOC_PATH_MAX              (128)
 #define MICROPY_STACK_CHECK         (1)
 #define MICROPY_STACK_CHECK_MARGIN  (1024)

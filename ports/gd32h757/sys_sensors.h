@@ -11,6 +11,6 @@ void sys_sensors_init(void);
 
 
 extern const struct _mp_obj_type_t pyb_sensors_type;
-
+void py_del_all_sensors(void);
 #endif
 

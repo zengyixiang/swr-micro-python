@@ -197,7 +197,7 @@ void mp_thread_deinit(void) {
     mp_thread_mutex_unlock(&thread_mutex);
 
     // Give the idle task a chance to run, to clean up any deleted tasks.
-    vTaskDelay(1);
+    vTaskDelay(20);
 }
 
 #endif // MICROPY_PY_THREAD

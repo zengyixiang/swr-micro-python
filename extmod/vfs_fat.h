@@ -29,7 +29,7 @@
 #include "py/obj.h"
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs.h"
-
+#include "driver/fatfs/ff.h"
 typedef struct _fs_user_mount_t {
     mp_obj_base_t base;
     mp_vfs_blockdev_t blockdev;

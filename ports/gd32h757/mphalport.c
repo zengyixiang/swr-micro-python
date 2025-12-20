@@ -9,6 +9,10 @@
 #include <sys/time.h>
 #include "py/ringbuf.h"
 #include "debug.h"
+#include "sys_timer.h"
+#include "sys_sensors.h"
+#include "sys_ui.h"
+
 extern int uart_txc(char ch);
 extern char uart_rxc(void);
 extern void uart_xSemaphore_take(void);
@@ -68,3 +72,49 @@ uint64_t mp_hal_time_ns(void) {
     ns += (uint64_t)tv.tv_usec * 1000ULL;
     return ns;
 }
+
+
+
+static mp_obj_t example_package___init__(void) {
+    if (!MP_STATE_VM(example_package_initialised)) {
+        // __init__ for builtins is called each time the module is imported,
+        //   so ensure that initialisation only happens once.
+        MP_STATE_VM(example_package_initialised) = true;
+        // mp_printf(&mp_plat_print, "example_package.__init__\n");
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(example_package___init___obj, example_package___init__);
+MP_REGISTER_ROOT_POINTER(int example_package_initialised);
+
+extern void get_rtos_info(void);
+static mp_obj_t RTOS_info(void) {
+    get_rtos_info();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(RTOS_info_obj, RTOS_info);
+
+
+static const mp_rom_map_elem_t pyb_module_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_Smart_Code_Firmware_Library) },
+    { MP_ROM_QSTR(MP_QSTR___init__), MP_ROM_PTR(&example_package___init___obj) },
+    #if MICROPY_HW_ENABLE_SDCARD
+    { MP_ROM_QSTR(MP_QSTR_SDCard), MP_ROM_PTR(&pyb_sdcard_type) },
+    #endif
+    { MP_ROM_QSTR(MP_QSTR_delay), MP_ROM_PTR(&pyb_delay_type) },
+    { MP_ROM_QSTR(MP_QSTR_timer), MP_ROM_PTR(&pyb_timer_type) },
+    { MP_ROM_QSTR(MP_QSTR_sensors), MP_ROM_PTR(&pyb_sensors_type) },
+    { MP_ROM_QSTR(MP_QSTR_ui), MP_ROM_PTR(&pyb_ui_type) },
+
+    //  ?RTOS   ?   ?  
+    { MP_ROM_QSTR(MP_QSTR_RTOS_info), MP_ROM_PTR(&RTOS_info_obj) },
+};
+
+static MP_DEFINE_CONST_DICT(pyb_module_globals, pyb_module_globals_table);
+
+const mp_obj_module_t pyb_module = {
+    .base = { &mp_type_module },
+    .globals = (mp_obj_dict_t *)&pyb_module_globals,
+};
+
+MP_REGISTER_MODULE(MP_QSTR_Smart_Code_Firmware_Library, pyb_module);

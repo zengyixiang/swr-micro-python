@@ -31,7 +31,7 @@
 #include "py/objstr.h"
 #include "py/mperrno.h"
 #include "extmod/vfs.h"
-
+#include <stdio.h>
 #if MICROPY_VFS
 
 #if MICROPY_VFS_FAT
