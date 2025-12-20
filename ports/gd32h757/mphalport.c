@@ -12,6 +12,10 @@
 #include "sys_timer.h"
 #include "sys_sensors.h"
 #include "sys_ui.h"
+#include "RTOS/FreeRTOS/Source/include/FreeRTOS.h"
+#include "RTOS/FreeRTOS/Source/include/task.h"
+#include "RTOS/FreeRTOS/Source/include/timers.h"
+#include "driver/timer/timer.h"
 
 extern int uart_txc(char ch);
 extern char uart_rxc(void);
@@ -28,7 +32,9 @@ MP_WEAK uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
 }
 MP_WEAK int mp_hal_stdin_rx_chr(void) {
     for (;;) {
-        return (int)uart_rxc();
+        int c = uart_rxc();//TODO: 这里要修改为ESP32那样的
+        if(c != -1)
+            return c;
         // if (MP_STATE_PORT(pyb_stdio_uart) != NULL && uart_rx_any(MP_STATE_PORT(pyb_stdio_uart))) {
         //     return uart_rx_char(MP_STATE_PORT(pyb_stdio_uart));
         // }
@@ -36,7 +42,6 @@ MP_WEAK int mp_hal_stdin_rx_chr(void) {
         // if (dupterm_c >= 0) {
         //     return dupterm_c;
         // }
-
         // MICROPY_EVENT_POLL_HOOK
     }
 }
@@ -65,6 +70,17 @@ MP_WEAK mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
     return did_write ? ret : 0;
 }
 
+mp_uint_t mp_hal_ticks_cpu(void) {
+    return 0;
+}
+
+mp_uint_t mp_hal_ticks_ms(void) {
+    return get_sys_timer_us() * 1000;
+}
+mp_uint_t mp_hal_ticks_us(void) {
+    return get_sys_timer_us();
+}
+
 uint64_t mp_hal_time_ns(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -73,19 +89,84 @@ uint64_t mp_hal_time_ns(void) {
     return ns;
 }
 
-
-
-static mp_obj_t example_package___init__(void) {
-    if (!MP_STATE_VM(example_package_initialised)) {
-        // __init__ for builtins is called each time the module is imported,
-        //   so ensure that initialisation only happens once.
-        MP_STATE_VM(example_package_initialised) = true;
-        // mp_printf(&mp_plat_print, "example_package.__init__\n");
+void mp_hal_delay_ms(mp_uint_t ms) {
+    uint64_t us = (uint64_t)ms * 1000ULL;
+    uint64_t dt;
+    uint64_t t0 = get_sys_timer_us();
+    for (;;) {
+        mp_handle_pending(true);
+        MP_THREAD_GIL_EXIT();
+        uint64_t t1 = get_sys_timer_us();
+        dt = t1 - t0;
+        if (dt + portTICK_PERIOD_MS * 1000ULL >= us) {
+            // doing a vTaskDelay would take us beyond requested delay time
+            taskYIELD();
+            MP_THREAD_GIL_ENTER();
+            t1 = get_sys_timer_us();
+            dt = t1 - t0;
+            break;
+        } else {
+            ulTaskNotifyTake(pdFALSE, 1);
+            MP_THREAD_GIL_ENTER();
+        }
     }
-    return mp_const_none;
+    if (dt < us) {
+        // do the remaining delay accurately
+        mp_hal_delay_us(us - dt);
+    }
 }
-static MP_DEFINE_CONST_FUN_OBJ_0(example_package___init___obj, example_package___init__);
-MP_REGISTER_ROOT_POINTER(int example_package_initialised);
+
+void mp_hal_delay_us(mp_uint_t us) {
+    // these constants are tested for a 240MHz clock
+    const uint32_t this_overhead = 5;
+    const uint32_t pend_overhead = 150;
+
+    // return if requested delay is less than calling overhead
+    if (us < this_overhead) {
+        return;
+    }
+    us -= this_overhead;
+
+    uint64_t t0 = get_sys_timer_us();
+    for (;;) {
+        uint64_t dt = get_sys_timer_us() - t0;
+        if (dt >= us) {
+            return;
+        }
+        if (dt + pend_overhead < us) {
+            // we have enough time to service pending events
+            // (don't use MICROPY_EVENT_POLL_HOOK because it also yields)
+            mp_handle_pending(true);
+        }
+    }
+}
+
+extern TaskHandle_t  python_handle;
+void mp_hal_wake_main_task(void) {
+    xTaskNotifyGive(python_handle);
+}
+
+void mp_hal_wake_main_task_from_isr(void) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(python_handle, &xHigherPriorityTaskWoken);
+    if (xHigherPriorityTaskWoken == pdTRUE) {
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+}
+
+
+
+// static mp_obj_t example_package___init__(void) {
+//     if (!MP_STATE_VM(example_package_initialised)) {
+//         // __init__ for builtins is called each time the module is imported,
+//         //   so ensure that initialisation only happens once.
+//         MP_STATE_VM(example_package_initialised) = true;
+//         // mp_printf(&mp_plat_print, "example_package.__init__\n");
+//     }
+//     return mp_const_none;
+// }
+// static MP_DEFINE_CONST_FUN_OBJ_0(example_package___init___obj, example_package___init__);
+// MP_REGISTER_ROOT_POINTER(int example_package_initialised);
 
 extern void get_rtos_info(void);
 static mp_obj_t RTOS_info(void) {
@@ -97,11 +178,11 @@ static MP_DEFINE_CONST_FUN_OBJ_0(RTOS_info_obj, RTOS_info);
 
 static const mp_rom_map_elem_t pyb_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_Smart_Code_Firmware_Library) },
-    { MP_ROM_QSTR(MP_QSTR___init__), MP_ROM_PTR(&example_package___init___obj) },
+    // { MP_ROM_QSTR(MP_QSTR___init__), MP_ROM_PTR(&example_package___init___obj) },
     #if MICROPY_HW_ENABLE_SDCARD
     { MP_ROM_QSTR(MP_QSTR_SDCard), MP_ROM_PTR(&pyb_sdcard_type) },
     #endif
-    { MP_ROM_QSTR(MP_QSTR_delay), MP_ROM_PTR(&pyb_delay_type) },
+    { MP_ROM_QSTR(MP_QSTR_delay), MP_ROM_PTR(&delay_module) },
     { MP_ROM_QSTR(MP_QSTR_timer), MP_ROM_PTR(&pyb_timer_type) },
     { MP_ROM_QSTR(MP_QSTR_sensors), MP_ROM_PTR(&pyb_sensors_type) },
     { MP_ROM_QSTR(MP_QSTR_ui), MP_ROM_PTR(&pyb_ui_type) },

@@ -110,21 +110,6 @@ void nlr_jump_fail(void *val) {
 //     return MP_IMPORT_STAT_NO_EXIST;
 // }
 
-mp_uint_t mp_hal_ticks_ms(void) {
-    return 0;
-}
-mp_uint_t mp_hal_ticks_us(void) {
-    return 0;
-}
-mp_uint_t mp_hal_ticks_cpu(void) {
-    return 0;
-}
-void mp_hal_delay_ms(mp_uint_t Delay){
-
-}
-void mp_hal_delay_us(mp_uint_t Delay){
-    
-}
 #ifndef NDEBUG
 // Used when debugging is enabled.
 void MP_WEAK __assert_func(const char *file, int line, const char *func, const char *expr) {

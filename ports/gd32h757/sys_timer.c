@@ -5,10 +5,8 @@
 #include <string.h>
 // #include "debug/debug.h"
 #include "py/objmodule.h"
-// #include "sys.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "timers.h"
+#include "mphalport.h"
+
 
 #define SYS_TIMER_NUM       10
 
@@ -16,61 +14,38 @@
 
 
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "timers.h"
+#include "RTOS/FreeRTOS/Source/include/FreeRTOS.h"
+#include "RTOS/FreeRTOS/Source/include/task.h"
+#include "RTOS/FreeRTOS/Source/include/timers.h"
 #include "sys.h"
-
+#include "driver/timer/timer.h"
+#include "mphalport.h"
 
 static mp_obj_t delay_ms(mp_obj_t time_ms) {
-	if(get_start_flag() == TRUE) 
-		return mp_const_none;
-    mp_int_t delay_ms = mp_obj_get_int(time_ms);
-    if (MP_STATE_VM(sched_state) == MP_SCHED_IDLE)
-    {
-        MP_THREAD_GIL_EXIT();
-        vTaskDelay(delay_ms);
-        MP_THREAD_GIL_ENTER();
-    }
-    else
-    {
-        vTaskDelay(delay_ms);
-    }
+    mp_int_t ms = mp_obj_get_int(time_ms);
+    mp_hal_delay_ms(ms);
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(ms_obj, delay_ms);
 
 static mp_obj_t delay_s(mp_obj_t time_s) {
-	if(get_start_flag() == TRUE) 
-		return mp_const_none;
-    mp_int_t delay_s = mp_obj_get_int(time_s);
-    if (MP_STATE_VM(sched_state) == MP_SCHED_IDLE)
-    {
-        MP_THREAD_GIL_EXIT();
-        vTaskDelay(delay_s * 1000);
-        MP_THREAD_GIL_ENTER();
-    }
-    else
-    {
-        vTaskDelay(delay_s * 1000);
-    }
+    mp_int_t s = mp_obj_get_int(time_s);
+	mp_hal_delay_ms(s * 1000);
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(s_obj, delay_s);
 
 static const mp_rom_map_elem_t delay_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_delay) },
     { MP_ROM_QSTR(MP_QSTR_ms), MP_ROM_PTR(&ms_obj) },
     { MP_ROM_QSTR(MP_QSTR_s), MP_ROM_PTR(&s_obj) },
 };
 
 static MP_DEFINE_CONST_DICT(delay_locals_dict, delay_locals_dict_table);
-
-MP_DEFINE_CONST_OBJ_TYPE(
-    pyb_delay_type,
-    MP_QSTR_delay,
-    MP_TYPE_FLAG_NONE,
-    locals_dict, &delay_locals_dict
-    );
+const mp_obj_module_t delay_module = {
+    .base = { &mp_type_module },
+    .globals = (mp_obj_dict_t *)&delay_locals_dict,
+};
 
 //-----------------------------------------------------------------------------------------------
 
