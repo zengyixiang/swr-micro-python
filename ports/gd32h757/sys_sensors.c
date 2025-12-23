@@ -26,6 +26,7 @@ typedef struct _pyb_sensors_obj_t {
     bool        event_is_enable[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
     mp_obj_t    event_condition[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
     mp_obj_t    event_callback[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
+    mp_obj_t    user_data[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
 } pyb_sensors_obj_t;
 
 
@@ -83,9 +84,11 @@ void run_event_callback(void * obj,uint8_t channel,uint8_t event_number)
         return;
     }
     mp_obj_t callback = sensor->event_callback[channel][event_number];
+    mp_obj_t user_data = sensor->user_data[channel][event_number];
     #if 1
     if (callback != mp_const_none) {
-        interrupt_to_thread(callback,MP_OBJ_FROM_PTR(sensor));
+        // interrupt_to_thread(callback,MP_OBJ_FROM_PTR(sensor));
+        interrupt_to_thread(callback,user_data);
     }
     #else
     if (callback != mp_const_none) {
@@ -218,6 +221,7 @@ static mp_obj_t sensors_set_callback(size_t n_args, const mp_obj_t *args) {
     mp_int_t channel = mp_obj_get_int(args[1]);
     mp_obj_t condition = args[2];
     mp_obj_t callback = args[3];
+    mp_obj_t user_data = args[4];
     mp_int_t advanced_event_number = 0;
 	uint8_t condition_int_flag = 0;
     uint8_t event_number;
@@ -230,7 +234,7 @@ static mp_obj_t sensors_set_callback(size_t n_args, const mp_obj_t *args) {
         printf("advanced_event_number:%d\r\n",advanced_event_number);
         
     }
-    else if (condition == mp_const_none || callback == mp_const_none) 
+    else if (callback == mp_const_none) 
     {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("sensors_set_callback doesn't exist2 %d"),channel);
     }
@@ -250,7 +254,7 @@ static mp_obj_t sensors_set_callback(size_t n_args, const mp_obj_t *args) {
 		self->event_condition[channel - 1][event_number] = NULL;
 	else
 		self->event_condition[channel - 1][event_number] = condition;
-		
+	self->user_data[channel - 1][event_number] = user_data;
     enable_external_sensor_event(self->sensor_ptr,channel - 0,event_number,advanced_event_number);
     return mp_const_none;
 }
@@ -273,6 +277,7 @@ static mp_obj_t sensors_del_callback(mp_obj_t self_in,mp_obj_t channel_in,mp_obj
     self->event_is_enable[channel - 0][event_number] = false;
     self->event_condition[channel - 1][event_number] = mp_const_none;
     self->event_callback[channel - 1][event_number] = mp_const_none;
+    self->user_data[channel - 1][event_number] = mp_const_none;
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_3(sensors_del_callback_obj,sensors_del_callback);

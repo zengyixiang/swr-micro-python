@@ -26,6 +26,7 @@ typedef struct _mp_thread_t {
     void *arg;              // thread Python args, a GC root pointer
     void *stack;            // pointer to the stack
     size_t stack_len;       // number of words in the stack
+    StaticTask_t xTaskBuffer;
     struct _mp_thread_t *next;
 } mp_thread_t;
 
@@ -109,7 +110,43 @@ static void freertos_entry(void *arg) {
     // Delete this FreeRTOS task (this call to vTaskDelete will not return).
     vTaskDelete(NULL);
 }
+#if 1
+mp_uint_t mp_thread_create_ex(void *(*entry)(void *), void *arg, size_t *stack_size, int priority, char *name) {
+    // store thread entry function into a global variable so we can access it
+    ext_thread_entry = entry;
 
+    if (*stack_size == 0) {
+        *stack_size = MP_THREAD_DEFAULT_STACK_SIZE; // default stack size
+    } else if (*stack_size < MP_THREAD_MIN_STACK_SIZE) {
+        *stack_size = MP_THREAD_MIN_STACK_SIZE; // minimum stack size
+    }
+
+    // Allocate linked-list node (must be outside thread_mutex lock)
+    mp_thread_t *th = m_new_obj(mp_thread_t);
+    void *stack = m_new(uint8_t, *stack_size);
+    mp_thread_mutex_lock(&thread_mutex, 1);
+
+    // create thread
+    th->id = xTaskCreateStatic(freertos_entry, name, *stack_size / sizeof(StackType_t), arg, priority, stack, &th->xTaskBuffer);
+    if (th->id == NULL) {
+        mp_thread_mutex_unlock(&thread_mutex);
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("can't create thread"));
+    }
+    TaskStatus_t taskDetails;
+    vTaskGetInfo(th->id, &taskDetails, pdTRUE, eInvalid);
+    // add thread to linked list of all threads
+    th->run_state = MP_THREAD_RUN_STATE_NEW;
+    th->arg = arg;
+    th->stack = taskDetails.pxStackBase;
+    th->stack_len = *stack_size / sizeof(uintptr_t);
+    th->next = thread;
+    thread = th;
+
+    mp_thread_mutex_unlock(&thread_mutex);
+
+    return (mp_uint_t)th->id;
+}
+#else
 mp_uint_t mp_thread_create_ex(void *(*entry)(void *), void *arg, size_t *stack_size, int priority, char *name) {
     // store thread entry function into a global variable so we can access it
     ext_thread_entry = entry;
@@ -145,7 +182,7 @@ mp_uint_t mp_thread_create_ex(void *(*entry)(void *), void *arg, size_t *stack_s
 
     return (mp_uint_t)th->id;
 }
-
+#endif
 mp_uint_t mp_thread_create(void *(*entry)(void *), void *arg, size_t *stack_size) {
     return mp_thread_create_ex(entry, arg, stack_size, task_priority, "mp_thread");
 }
