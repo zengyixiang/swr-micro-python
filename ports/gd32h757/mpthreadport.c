@@ -56,6 +56,7 @@ void mp_thread_gc_others(void) {
     for (mp_thread_t *th = thread; th != NULL; th = th->next) {
         gc_collect_root((void **)&th, 1);
         gc_collect_root(&th->arg, 1); // probably not needed
+        gc_collect_root(&th->stack, 1);
         if (th->id == xTaskGetCurrentTaskHandle()) {
             continue;
         }
@@ -123,7 +124,7 @@ mp_uint_t mp_thread_create_ex(void *(*entry)(void *), void *arg, size_t *stack_s
 
     // Allocate linked-list node (must be outside thread_mutex lock)
     mp_thread_t *th = m_new_obj(mp_thread_t);
-    void *stack = m_new(uint8_t, *stack_size);
+    void *stack = m_new(StackType_t, *stack_size / sizeof(StackType_t));
     mp_thread_mutex_lock(&thread_mutex, 1);
 
     // create thread
@@ -132,16 +133,14 @@ mp_uint_t mp_thread_create_ex(void *(*entry)(void *), void *arg, size_t *stack_s
         mp_thread_mutex_unlock(&thread_mutex);
         mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("can't create thread"));
     }
-    TaskStatus_t taskDetails;
-    vTaskGetInfo(th->id, &taskDetails, pdTRUE, eInvalid);
     // add thread to linked list of all threads
     th->run_state = MP_THREAD_RUN_STATE_NEW;
     th->arg = arg;
-    th->stack = taskDetails.pxStackBase;
-    th->stack_len = *stack_size / sizeof(uintptr_t);
+    th->stack = stack;
+    th->stack_len = *stack_size / sizeof(StackType_t);
     th->next = thread;
     thread = th;
-
+    // printf("T:th:%p %p stack:%p\r\n",&th,th,stack);
     mp_thread_mutex_unlock(&thread_mutex);
 
     return (mp_uint_t)th->id;

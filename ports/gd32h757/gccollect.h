@@ -43,4 +43,5 @@ extern uint32_t _ram_end;
 extern uint32_t Heap_end;
 extern uint32_t end;
 extern uint32_t _end;
+extern uint32_t stack_start;
 #endif // MICROPY_INCLUDED_STM32_GCCOLLECT_H

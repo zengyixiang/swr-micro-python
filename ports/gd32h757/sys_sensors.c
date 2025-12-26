@@ -222,7 +222,7 @@ static mp_obj_t sensors_set_callback(size_t n_args, const mp_obj_t *args) {
     mp_obj_t condition = args[2];
     mp_obj_t callback = args[3];
     mp_obj_t user_data = args[4];
-    mp_int_t advanced_event_number = 0;
+    mp_int_t advanced_event_number = -1;
 	uint8_t condition_int_flag = 0;
     uint8_t event_number;
     if(channel <= 0 || channel > SYS_SENSORS_MAX_CHANNEL_NUM) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("sensors_set_callback doesn't exist %d"),channel);

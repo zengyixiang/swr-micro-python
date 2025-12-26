@@ -16,9 +16,6 @@ void gc_collect(void) {
     mp_thread_gc_others();
     #endif
 
-    // trace soft timer nodes
-    // soft_timer_gc_mark_all();
-
     // end the GC
     gc_collect_end();
     // gc_dump_info(&mp_plat_print);
