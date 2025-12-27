@@ -6,7 +6,7 @@
 #include "py/mpthread.h"
 #include "py/mphal.h"
 #include "mpthreadport.h"
-
+#include "gd32h7xx.h"
 #if MICROPY_PY_THREAD
 
 #define MP_THREAD_MIN_STACK_SIZE                        (4 * 1024)
@@ -48,7 +48,9 @@ void mp_thread_init(void *stack, uint32_t stack_len, int priority) {
     mp_thread_mutex_init(&thread_mutex);
     task_priority = priority;
     // memory barrier to ensure above data is committed
-    __sync_synchronize();
+    // __sync_synchronize();    
+    __DSB();
+    __ISB();
 }
 
 void mp_thread_gc_others(void) {

@@ -52,6 +52,7 @@
 #define MICROPY_PY_THREAD                   (1)
 #define MICROPY_PY_THREAD_GIL               (1)
 #define MICROPY_PY_THREAD_GIL_VM_DIVISOR    (32)
+#define MICROPY_WARNINGS                    (0)
 typedef long mp_off_t;
 
 extern uint32_t get_random_data();

@@ -31,7 +31,9 @@
 
 #include "py/gc.h"
 #include "py/runtime.h"
-
+#include "RTOS/FreeRTOS/Source/include/FreeRTOS.h"
+#include "RTOS/FreeRTOS/Source/include/task.h"
+#include "RTOS/FreeRTOS/Source/include/timers.h"
 #if MICROPY_DEBUG_VALGRIND
 #include <valgrind/memcheck.h>
 #endif
@@ -119,8 +121,8 @@
 #else
 // Either no threading, or assume callers to gc_collect() hold the GIL
 #define GC_MUTEX_INIT()
-#define GC_ENTER()
-#define GC_EXIT()
+#define GC_ENTER()  taskENTER_CRITICAL()
+#define GC_EXIT()   taskEXIT_CRITICAL()
 #endif
 
 // Static functions for individual steps of the GC mark/sweep sequence

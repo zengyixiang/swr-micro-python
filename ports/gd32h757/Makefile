@@ -125,7 +125,7 @@ CFLAGS += -I$(TOP)/../GD32H7xx_usbhs_library/device/core/Include
 CFLAGS += -I$(TOP)/../GD32H7xx_usbhs_library/device/class/cdc/Include
 CFLAGS += -I$(TOP)/../GD32H7xx_usbhs_library/ustd/common
 CFLAGS += -I$(TOP)/../GD32H7xx_usbhs_library/ustd/class/cdc
-CFLAGS += -Wall -Werror -std=c11 # -nostdlib
+CFLAGS += -Wall -Wpointer-arith -Werror -Wdouble-promotion -Wfloat-conversion -std=gnu99 # -nostdlib
 CFLAGS +=  -mtune=cortex-m7 -mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb
 CSUPEROPT = -Os # save some code space for performance-critical code
 # $(info CFLAGS = $(CFLAGS))
