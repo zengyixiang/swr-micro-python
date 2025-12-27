@@ -133,8 +133,8 @@ CSUPEROPT = -Os # save some code space for performance-critical code
 ifeq ($(DEBUG), 1)
 CFLAGS += -Og
 else
-CFLAGS += -Os -DNDEBUG -DGD32H7XX -DUSE_STDPERIPH_DRIVER -DCODE_IN_SDRAM -DUSE_USB_HS
-CFLAGS += -Os -DUSE_USBHS0
+CFLAGS += -DNDEBUG -DGD32H7XX -DUSE_STDPERIPH_DRIVER -DCODE_IN_SDRAM -DUSE_USB_HS -DUSE_USBHS0
+CFLAGS += -O3 -g0
 CFLAGS += -fdata-sections -ffunction-sections
 endif
 

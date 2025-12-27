@@ -22,7 +22,7 @@
 // /
 // /----------------------------------------------------------------------------*/
 
-
+#include "driver/fatfs/ff.h"
 // #ifndef FF_DEFINED
 // #define FF_DEFINED  86604   /* Revision ID */
 
