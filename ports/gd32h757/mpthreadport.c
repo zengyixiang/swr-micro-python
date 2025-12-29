@@ -34,7 +34,9 @@ typedef struct _mp_thread_t {
 static mp_thread_mutex_t thread_mutex;
 static mp_thread_t thread_entry0;
 static mp_thread_t *thread = NULL; // root pointer, handled by mp_thread_gc_others
-
+static TaskHandle_t  delete_task_handle;
+static TaskHandle_t delete_Handle;
+static void pyb_delete_task(void);
 void mp_thread_init(void *stack, uint32_t stack_len, int priority) {
     mp_thread_set_state(&mp_state_ctx.thread);
     // create the first entry in the linked list of all threads
@@ -47,6 +49,7 @@ void mp_thread_init(void *stack, uint32_t stack_len, int priority) {
     thread = &thread_entry0;
     mp_thread_mutex_init(&thread_mutex);
     task_priority = priority;
+    pyb_delete_task();
     // memory barrier to ensure above data is committed
     // __sync_synchronize();    
     __DSB();
@@ -93,6 +96,41 @@ void mp_thread_start(void) {
     mp_thread_mutex_unlock(&thread_mutex);
 }
 
+static void delete_task(void * pvParameter)
+{
+    uint32_t Communication_task_NotifyValue;
+    delete_Handle = NULL;
+    while(1)
+    {
+        Communication_task_NotifyValue=ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
+        if(Communication_task_NotifyValue > 0)
+        {
+            if(delete_Handle != NULL)
+            {
+                vTaskDelete(delete_Handle);
+                mp_thread_mutex_lock(&thread_mutex, 1);
+                for (mp_thread_t **th = &thread; *th != NULL; th = &(*th)->next) {
+                    if ((*th)->id == delete_Handle) {
+                        *th = (*th)->next;
+                    }
+                }
+                mp_thread_mutex_unlock(&thread_mutex);
+                delete_Handle = NULL;
+            }
+        }
+    }
+}
+static void pyb_delete_task(void)
+{
+    BaseType_t ret;
+	ret = xTaskCreate(delete_task, "delete_task_handle", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, &delete_task_handle);
+    if(delete_task_handle == NULL || ret != pdPASS)
+    {
+        printf("delete_task_handle error\r\n");
+        while(1);
+    }
+}
+
 static void *(*ext_thread_entry)(void *) = NULL;
 
 static void freertos_entry(void *arg) {
@@ -100,18 +138,17 @@ static void freertos_entry(void *arg) {
     if (ext_thread_entry) {
         ext_thread_entry(arg);
     }
-
-    // Remove the thread from the linked-list of active threads.
-    mp_thread_mutex_lock(&thread_mutex, 1);
-    for (mp_thread_t **th = &thread; *th != NULL; th = &(*th)->next) {
-        if ((*th)->id == xTaskGetCurrentTaskHandle()) {
-            *th = (*th)->next;
-        }
+    TaskHandle_t task_handle = xTaskGetCurrentTaskHandle();
+    vTaskPrioritySet(task_handle,configMAX_PRIORITIES - 2);
+    delete_Handle = task_handle;
+    xTaskNotifyGive(delete_task_handle);
+    taskYIELD();
+    printf("delete task error %p\r\n",task_handle);
+    
+    while(1)
+    {
+        vTaskDelay(portMAX_DELAY);
     }
-    mp_thread_mutex_unlock(&thread_mutex);
-
-    // Delete this FreeRTOS task (this call to vTaskDelete will not return).
-    vTaskDelete(NULL);
 }
 #if 1
 mp_uint_t mp_thread_create_ex(void *(*entry)(void *), void *arg, size_t *stack_size, int priority, char *name) {
