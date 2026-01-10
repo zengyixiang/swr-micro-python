@@ -134,7 +134,7 @@ ifeq ($(DEBUG), 1)
 CFLAGS += -Og
 else
 CFLAGS += -DNDEBUG -DGD32H7XX -DUSE_STDPERIPH_DRIVER -DCODE_IN_SDRAM -DUSE_USB_HS -DUSE_USBHS0
-CFLAGS += -O3 -g0
+CFLAGS += -O0 -g0
 CFLAGS += -fdata-sections -ffunction-sections
 endif
 
@@ -173,8 +173,21 @@ OBJ += $(addprefix $(BUILD)/, $(SHARED_SRC_C:.c=.o))
 OBJ += $(PY_CORE_O)
 OBJ += $(PY_O)
 
+AR     := arm-none-eabi-ar
+RANLIB := arm-none-eabi-ranlib
+
+LIBNAME := mylib
+LIB     := $(BUILD)/lib$(LIBNAME).a
+
 # Define the top-level target, the main firmware.
-all: $(BUILD)/firmware.dfu
+all: $(LIB)
+# all: $(BUILD)/firmware.dfu
+
+$(LIB): $(OBJ)
+	@echo "AR  $@"
+	@mkdir -p $(dir $@)
+	@$(AR) rcs $@ $^
+	@$(RANLIB) $@
 
 $(BUILD)/firmware.elf: $(OBJ)
 	$(ECHO) "LINK $@"

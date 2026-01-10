@@ -199,9 +199,9 @@ static void *thread_entry(void *args_in) {
     DEBUG_printf("[thread] finish ts=%p\n", &ts);
 
     // signal that we are finished
-    mp_thread_finish();
+    // mp_thread_finish();
 
-    MP_THREAD_GIL_EXIT();
+    // MP_THREAD_GIL_EXIT();
 
     return NULL;
 }

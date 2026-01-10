@@ -116,7 +116,16 @@ static void delete_task(void * pvParameter)
                 }
                 mp_thread_mutex_unlock(&thread_mutex);
                 delete_Handle = NULL;
+                MP_THREAD_GIL_EXIT();
             }
+            else{
+                printf("delete_task error 1\r\n");
+                while (1);
+            }
+        }
+        else{
+            printf("delete_task error 2\r\n");
+            while (1);
         }
     }
 }
@@ -138,17 +147,37 @@ static void freertos_entry(void *arg) {
     if (ext_thread_entry) {
         ext_thread_entry(arg);
     }
+#if 1
     TaskHandle_t task_handle = xTaskGetCurrentTaskHandle();
     vTaskPrioritySet(task_handle,configMAX_PRIORITIES - 2);
     delete_Handle = task_handle;
-    xTaskNotifyGive(delete_task_handle);
+    mp_thread_finish();
+    if(pdPASS != xTaskNotifyGive(delete_task_handle)){
+        printf("delete task error 1%p\r\n",task_handle);
+        while (1);
+    }
     taskYIELD();
-    printf("delete task error %p\r\n",task_handle);
+    printf("delete task error 2%p\r\n",task_handle);
     
     while(1)
     {
         vTaskDelay(portMAX_DELAY);
     }
+#else
+    mp_thread_finish();
+
+    MP_THREAD_GIL_EXIT();
+    mp_thread_mutex_lock(&thread_mutex, 1);
+    for (mp_thread_t **th = &thread; *th != NULL; th = &(*th)->next) {
+        if ((*th)->id == xTaskGetCurrentTaskHandle()) {
+            *th = (*th)->next;
+        }
+    }
+    mp_thread_mutex_unlock(&thread_mutex);
+
+    // Delete this FreeRTOS task (this call to vTaskDelete will not return).
+    vTaskDelete(NULL);
+#endif
 }
 #if 1
 mp_uint_t mp_thread_create_ex(void *(*entry)(void *), void *arg, size_t *stack_size, int priority, char *name) {
