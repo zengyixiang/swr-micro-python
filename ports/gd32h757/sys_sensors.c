@@ -13,8 +13,18 @@
 #include "py/objmodule.h"
 #include "sys.h"
 #include "sensors/sensors.h"
+#include "dlist.h"
 
 #define PYB_SENSORS_OBJ_ALL_NUM MP_ARRAY_SIZE(MP_STATE_PORT(pyb_sensors_obj_all))
+#define ERROR       -1
+struct _event{
+    Dlist_node_t list;
+    uint8_t channel;
+    int advanced_event_number;
+    bool        event_is_enable;
+    mp_obj_t    event_callback;
+    mp_obj_t    user_data;
+};
 
 typedef struct _pyb_sensors_obj_t {
     mp_obj_base_t   base;
@@ -23,12 +33,9 @@ typedef struct _pyb_sensors_obj_t {
     uint16_t            sensor_number;
     uint16_t    sensor_channel_num;
     int16_t    sensor_ptr;
-    bool        event_is_enable[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
-    mp_obj_t    event_condition[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
-    mp_obj_t    event_callback[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
-    mp_obj_t    user_data[SYS_SENSORS_MAX_CHANNEL_NUM][SYS_SENSORS_MAX_EVENT_NUM];
-} pyb_sensors_obj_t;
+    Dlist_node_t event_list;
 
+} pyb_sensors_obj_t;
 
 void py_del_all_sensors(void)
 {
@@ -41,72 +48,44 @@ void py_del_all_sensors(void)
     }
 }
 
-
-_Bool check_event_satisfy_condition(void * obj,uint8_t channel,uint8_t event_number)
-{
-    pyb_sensors_obj_t *sensor = obj;
-    if (sensor == NULL) {
-        return FALSE;
-    }
-	if(sensor->event_condition[channel][event_number] == NULL)
-		return FALSE;
-    mp_obj_t callback = sensor->event_condition[channel][event_number];
-    mp_obj_t ret = 0;
-    if (callback != mp_const_none) {
-        mp_sched_lock();
-//        gc_lock();
-        nlr_buf_t nlr;
-        if (nlr_push(&nlr) == 0) {
-            ret = mp_call_function_1(callback, MP_OBJ_FROM_PTR(sensor));
-            nlr_pop();
-        } else {
-//            tim->callback = mp_const_none;
-            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
-//            mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("Callback error"));
-        }
-//        gc_unlock();
-        mp_sched_unlock();
-    }
-    if(mp_obj_get_int(ret) == 0)
-    {
-        return FALSE;
-    }
-    else
-    {
-        return TRUE;
-    }
-}
 extern void interrupt_to_thread(void* callback,void* para);
-void run_event_callback(void * obj,uint8_t channel,uint8_t event_number)
+void run_event_callback(void * obj,uint8_t channel,int event_number)
 {
     pyb_sensors_obj_t *sensor = obj;
     if (sensor == NULL) {
         return;
     }
-    mp_obj_t callback = sensor->event_callback[channel][event_number];
-    mp_obj_t user_data = sensor->user_data[channel][event_number];
-    #if 1
-    if (callback != mp_const_none) {
-        // interrupt_to_thread(callback,MP_OBJ_FROM_PTR(sensor));
-        interrupt_to_thread(callback,user_data);
-    }
-    #else
-    if (callback != mp_const_none) {
-        mp_sched_lock();
-//        gc_lock();
-        nlr_buf_t nlr;
-        if (nlr_push(&nlr) == 0) {
-            mp_call_function_1(callback, MP_OBJ_FROM_PTR(sensor));
-            nlr_pop();
-        } else {
-//            tim->callback = mp_const_none;
-            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
-//            mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("Callback error"));
+    struct _event * T,*n;
+    mp_obj_t callback;
+    mp_obj_t user_data;
+    if(event_number != ERROR){
+        list_for_each_entry_safe(T,n,&sensor->event_list,struct _event,list)
+        {
+            if(T->advanced_event_number == event_number && T->channel == channel){
+                callback = T->event_callback;
+                user_data = T->user_data;
+                if (callback != mp_const_none) {
+                    // interrupt_to_thread(callback,MP_OBJ_FROM_PTR(sensor));
+                    interrupt_to_thread(callback,user_data);
+                }
+            }
         }
-//        gc_unlock();
-        mp_sched_unlock();
     }
-    #endif
+    else{
+        list_for_each_entry_safe(T,n,&sensor->event_list,struct _event,list)
+        {
+            if(T->channel == channel && T->advanced_event_number == ERROR){
+                callback = T->event_callback;
+                user_data = T->user_data;
+                if (callback != mp_const_none) {
+                    // interrupt_to_thread(callback,MP_OBJ_FROM_PTR(sensor));
+                    interrupt_to_thread(callback,user_data);
+                }
+            }
+
+        }
+    }
+
 }
 
 static int find_free_obj(void)
@@ -118,7 +97,7 @@ static int find_free_obj(void)
             return i;
         }
     }
-    return -1;
+    return ERROR;
 }
 
 
@@ -219,43 +198,32 @@ static MP_DEFINE_CONST_FUN_OBJ_2(sensors_set_value_obj,sensors_set_value);
 static mp_obj_t sensors_set_callback(size_t n_args, const mp_obj_t *args) {
     pyb_sensors_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_int_t channel = mp_obj_get_int(args[1]);
-    mp_obj_t condition = args[2];
+    mp_obj_t _advanced_event_number = args[2];
     mp_obj_t callback = args[3];
     mp_obj_t user_data = args[4];
-    mp_int_t advanced_event_number = -1;
-	uint8_t condition_int_flag = 0;
-    uint8_t event_number;
+    mp_int_t advanced_event_number = ERROR;
     if(channel <= 0 || channel > SYS_SENSORS_MAX_CHANNEL_NUM) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("sensors_set_callback doesn't exist %d"),channel);
-    condition_int_flag = mp_obj_is_int(condition);
-	printf("condition_int_flag:%d\r\n",condition_int_flag);
-    if(condition_int_flag)
+    struct _event *event_node = m_new_obj(struct _event);
+    memset(event_node, 0, sizeof(*event_node));
+    if(mp_obj_is_int(_advanced_event_number))
     {
-        advanced_event_number = mp_obj_get_int(condition);
-        printf("advanced_event_number:%d\r\n",advanced_event_number);
+        advanced_event_number = mp_obj_get_int(_advanced_event_number);
+        // printf("advanced_event_number:%d\r\n",advanced_event_number);
         
     }
     else if (callback == mp_const_none) 
     {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("sensors_set_callback doesn't exist2 %d"),channel);
     }
-    for(event_number = 0;event_number < SYS_SENSORS_MAX_EVENT_NUM;event_number++)
-    {
-        if(self->event_is_enable[channel - 1][event_number] != true)
-            break;
-    }
-    if(event_number >= SYS_SENSORS_MAX_EVENT_NUM)
-    {
-        mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("event_number >= SYS_SENSORS_MAX_EVENT_NUM"));
-    }
-//    printf("sensors_set_callback:%d %d\r\n",advanced_event_number,event_number);
-    self->event_is_enable[channel - 1][event_number] = true;
-    self->event_callback[channel - 1][event_number] = callback;
-	if(condition_int_flag)
-		self->event_condition[channel - 1][event_number] = NULL;
-	else
-		self->event_condition[channel - 1][event_number] = condition;
-	self->user_data[channel - 1][event_number] = user_data;
-    enable_external_sensor_event(self->sensor_ptr,channel - 0,event_number,advanced_event_number);
+    // printf("sensors_set_callback:%d %d\r\n",channel,advanced_event_number);
+    event_node->event_is_enable = true;
+    event_node->channel = channel - 1;
+    event_node->event_callback = callback;
+    event_node->event_callback = callback;
+	event_node->advanced_event_number = advanced_event_number;
+	event_node->user_data = user_data;
+    Dlist_init(&event_node->list);
+    Dlist_insert_after(&self->event_list, &event_node->list);
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR(sensors_set_callback_obj,4,sensors_set_callback);
@@ -265,19 +233,15 @@ static mp_obj_t sensors_del_callback(mp_obj_t self_in,mp_obj_t channel_in,mp_obj
     pyb_sensors_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t channel = mp_obj_get_int(channel_in);
     if(channel <= 0 || channel > SYS_SENSORS_MAX_CHANNEL_NUM) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("sensors_del_callback doesn't exist %d"),channel);
-    uint8_t event_number;
-    for(event_number = 0;event_number < SYS_SENSORS_MAX_EVENT_NUM;event_number++)
+    channel--;
+    struct _event * T,*n;
+    list_for_each_entry_safe(T,n,&self->event_list,struct _event,list)
     {
-        if(self->event_callback[channel - 1][event_number] == callback)
-            break;
+        if(T->event_callback == callback && T->channel == channel){
+            Dlist_remove(&T->list);
+            // printf("sensors_del_callback:%d %d\r\n",T->channel,T->advanced_event_number);
+        }
     }
-    
-    disable_external_sensor_event(self->sensor_ptr,channel - 0,event_number);
-//    printf("sensors_del_callback:%d %d\r\n",channel,event_number);
-    self->event_is_enable[channel - 0][event_number] = false;
-    self->event_condition[channel - 1][event_number] = mp_const_none;
-    self->event_callback[channel - 1][event_number] = mp_const_none;
-    self->user_data[channel - 1][event_number] = mp_const_none;
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_3(sensors_del_callback_obj,sensors_del_callback);
@@ -289,7 +253,7 @@ static mp_obj_t pyb_sensors_make_new(const mp_obj_type_t *type, size_t n_args, s
     mp_int_t sensor_number = mp_obj_get_int(args[1]);
 
     int free_obj= find_free_obj();
-    if(free_obj == -1 || sensor_name <= 0 || sensor_number <= 0)
+    if(free_obj == ERROR || sensor_name <= 0 || sensor_number <= 0)
     {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("sensros doesn't exist %d %d %d"),free_obj,sensor_name,sensor_number);
     }
@@ -304,16 +268,8 @@ static mp_obj_t pyb_sensors_make_new(const mp_obj_type_t *type, size_t n_args, s
 
     pyb_sensors_obj_t * sensor = m_new_obj(pyb_sensors_obj_t);
     memset(sensor, 0, sizeof(*sensor));
+    Dlist_init(&sensor->event_list);
     sensor->base.type = &pyb_sensors_type;
-    for(uint16_t i = 0;i < SYS_SENSORS_MAX_CHANNEL_NUM;i++)
-    {
-        for(uint8_t j = 0;j < SYS_SENSORS_MAX_EVENT_NUM;j++)
-        {
-            sensor->event_is_enable[i][j] = false;
-            sensor->event_callback[i][j] = mp_const_none;
-            sensor->event_condition[i][j] = mp_const_none;
-        }
-    }
     sensor->sensor_name = sensor_name;
     sensor->sensor_number = sensor_number;
     sensor->sensor_obj_number = free_obj;
