@@ -87,30 +87,25 @@ soft_reset:
         if(get_py_state() == PY_STATE_RUN_FILE)
         {
             pyexec_file_if_exists(PY_FILE_NAME);
-            change_py_state(PY_STATE_IDLE);
         }
         else if(get_py_state() == PY_STATE_REPL)
         {
             pyexec_friendly_repl();
-            change_py_state(PY_STATE_IDLE); 
         }
-        else
-        {
-        #if MICROPY_PY_THREAD
-            mp_thread_deinit();
-        #endif
-            py_sys_exit();
-			free_py_mem();
-            gc_sweep_all();
-            mp_deinit();
-            fflush(stdout);
-            while(1){
-                fwdgt_counter_reload();
-                vTaskDelay(10);
-                if(get_py_state() != PY_STATE_IDLE) break;
-            }
-            goto soft_reset;
+    #if MICROPY_PY_THREAD
+        mp_thread_deinit();
+    #endif
+        py_sys_exit();
+        gc_sweep_all();
+        mp_deinit();
+        fflush(stdout);
+        change_py_state(PY_STATE_IDLE); 
+        while(1){
+            fwdgt_counter_reload();
+            vTaskDelay(10);
+            if(get_py_state() != PY_STATE_IDLE) break;
         }
+        goto soft_reset;
     }
     return 0;
 }
@@ -131,6 +126,7 @@ void nlr_jump_fail(void *val) {
 #ifndef NDEBUG
 // Used when debugging is enabled.
 void MP_WEAK __assert_func(const char *file, int line, const char *func, const char *expr) {
+    printf("__assert_func: %s %d %s %s %s\r\n",file,line,func,expr);
     for (;;) {
     }
 }

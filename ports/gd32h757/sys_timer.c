@@ -75,7 +75,7 @@ void py_del_all_timer(void)
 //                   debug_printf("del_all_timer ok %d \r\n",i);
                 }
             }
-            // m_del_obj(pyb_timer_obj_t,MP_STATE_PORT(pyb_timer_obj_all)[i]);
+            m_del_obj(pyb_timer_obj_t,MP_STATE_PORT(pyb_timer_obj_all)[i]);
             MP_STATE_PORT(pyb_timer_obj_all)[i] = NULL;
         }
     }

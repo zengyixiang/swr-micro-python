@@ -42,7 +42,7 @@ void py_del_all_sensors(void)
     for (uint i = 0; i < PYB_SENSORS_OBJ_ALL_NUM; i++) {
         if(MP_STATE_PORT(pyb_sensors_obj_all)[i] != NULL)
         {
-            // m_del_obj(pyb_sensors_obj_t,MP_STATE_PORT(pyb_sensors_obj_all)[i]);
+            m_del_obj(pyb_sensors_obj_t,MP_STATE_PORT(pyb_sensors_obj_all)[i]);
             MP_STATE_PORT(pyb_sensors_obj_all)[i] = NULL;
         }
     }
