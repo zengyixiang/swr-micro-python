@@ -121,8 +121,8 @@
 #else
 // Either no threading, or assume callers to gc_collect() hold the GIL
 #define GC_MUTEX_INIT()
-#define GC_ENTER()  taskENTER_CRITICAL()
-#define GC_EXIT()   taskEXIT_CRITICAL()
+#define GC_ENTER()  // taskENTER_CRITICAL()
+#define GC_EXIT()   // taskEXIT_CRITICAL()
 #endif
 
 // Static functions for individual steps of the GC mark/sweep sequence
